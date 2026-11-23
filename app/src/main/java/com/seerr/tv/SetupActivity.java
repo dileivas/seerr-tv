@@ -35,7 +35,11 @@ public class SetupActivity extends AppCompatActivity {
 
         // Already configured -> jump straight into the web UI.
         if (!force && !TextUtils.isEmpty(saved)) {
-            startActivity(new Intent(this, WebActivity.class));
+            // Repassa o "path" que o launcher manda (abrir direto num título).
+            Intent next = new Intent(this, WebActivity.class);
+            String path = getIntent().getStringExtra("path");
+            if (!TextUtils.isEmpty(path)) next.putExtra("path", path);
+            startActivity(next);
             finish();
             return;
         }

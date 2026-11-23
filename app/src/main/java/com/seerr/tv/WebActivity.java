@@ -103,6 +103,22 @@ public class WebActivity extends AppCompatActivity {
         ui.postDelayed(disarmExit, 2000);
     }
 
+    /** Abre direto num título quando o launcher manda "path" (ex.: /movie/1263337). */
+    private static String withPath(String base, Intent it) {
+        if (it == null) return base;
+        String path = it.getStringExtra("path");
+        if (TextUtils.isEmpty(path)) return base;
+        it.removeExtra("path");
+        return base.replaceAll("/+$", "") + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (webView != null) webView.loadUrl(withPath(serverUrl, intent));
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,7 +147,7 @@ public class WebActivity extends AppCompatActivity {
         retry.setOnClickListener(v -> { hideError(); webView.loadUrl(serverUrl); });
         change.setOnClickListener(v -> openSetup());
 
-        webView.loadUrl(serverUrl);
+        webView.loadUrl(withPath(serverUrl, getIntent()));
         keepAwake();
 
         root.post(this::maybeShowCoach);
