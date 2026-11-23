@@ -264,7 +264,9 @@
     if (current && c.indexOf(current) !== -1 && visible(current)) { mark(current); return current; }
     // Detail page: land on the primary action (Request / Play / Manage) instead of a
     // star/trailer icon or a center card. Prefer by label, else the widest action.
-    var ma = document.querySelector('.media-actions');
+    // Only on a page: with a modal open, .media-actions (the "View Request" button behind it) would
+    // steal the focus back on every move, trapping the user outside the dialog.
+    var ma = visibleOverlay() ? null : document.querySelector('.media-actions');
     if (ma) {
       var acts = [].slice.call(ma.querySelectorAll('button:not([disabled]),a[href]')).filter(visible);
       if (acts.length) {
@@ -577,6 +579,17 @@
 
   function whereami() { if (!current || !visible(current)) return 'none'; return isSidebar(current) ? 'sidebar' : 'content'; }
 
+  /** The dismiss affordance of an open dialog: Close/Dismiss/Back first, a bare Cancel last. */
+  function closeButton(ov) {
+    var btns = [].slice.call(ov.querySelectorAll('button,[role="button"],a[href]')).filter(visible);
+    var label = function (b) { return ((b.getAttribute('aria-label') || '') + ' ' + (b.textContent || '')).trim(); };
+    var one = function (re) { return btns.filter(function (b) { return re.test(label(b)); })[0]; };
+    return one(/^(close|dismiss|back|fechar|voltar)$/i)
+        || one(/\b(close|dismiss|fechar|voltar)\b/i)
+        || one(/^(cancel|cancelar)$/i)
+        || null;
+  }
+
   function doBack() {
     // Close our own select overlay first (BACK should dismiss it, not the page).
     if (selectOverlay()) { closeSelectOverlay(); restoreSelectFocus(); return 'goback'; }
@@ -585,11 +598,16 @@
     var ov = visibleOverlay();
     if (ov) {
       var esc = function (t) { try { t.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true })); } catch (e) {} };
-      esc(document); esc(current || document.body);
+      esc(window); esc(document); esc(current || document.body);
       var prev = window.__seerrPreOverlay;
       setTimeout(function () {
-        if (prev && document.contains(prev) && visible(prev)) setFocus(prev); else pick();
-      }, 70);
+        // Several dialogs (the request one, for instance) ignore Escape: use their own close button.
+        var still = visibleOverlay();
+        if (still) { var cb = closeButton(still); if (cb) clickEl(cb); }
+        setTimeout(function () {
+          if (prev && document.contains(prev) && visible(prev)) setFocus(prev); else pick();
+        }, 90);
+      }, 90);
       return 'goback';
     }
     if (current && isSidebar(current)) return 'exit';
